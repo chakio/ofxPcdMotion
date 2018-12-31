@@ -49,6 +49,19 @@ public:
 	ofColor getCol();
 };
 
+class cameraControl : public ofEasyCam
+{
+private:
+	ofVec3f basePos;
+	ofVec3f targetPos;
+	double minDistance;
+	double maxDistance;
+	bool changeTarget;
+public:
+	void setDistanceRange(double minDistance,double maxDistance);
+	void update(double rate);
+};
+
 class ofApp : public ofBaseApp{
 
 	public:
@@ -70,7 +83,6 @@ class ofApp : public ofBaseApp{
 		void windowResized(int w, int h);
 
 		pcl::PCLPointCloud2* cloud = new pcl::PCLPointCloud2;
-		//pcl::PCLPointCloud2ConstPtr cloudDS(cloud);
 		pcl::PCLPointCloud2 cloud_filtered;
 
 		vector<particle> particles;
@@ -80,9 +92,13 @@ class ofApp : public ofBaseApp{
 
 		double enlargeLate = 500;
 		ofMesh mesh;
-		ofEasyCam cam;
 
-		double frequency = 5000;
-		double cSigmoid = 40;
-		double noiseLevel = 30;
+		double frequency = 4000;
+		double cSigmoid = 60;
+		double noiseLevel = 100;
+
+		cameraControl cam;
+		double minDistance = 500;
+		double maxDistance = 700;
+		double angleChangeFrequency = 3000;
 };

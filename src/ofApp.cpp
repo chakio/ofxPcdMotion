@@ -34,6 +34,39 @@ ofColor	particle::getCol()
 {
 	return col;
 }
+
+//--------------------------------------------------------------
+void cameraControl::setDistanceRange(double min,double max)
+{
+	minDistance = min;
+	maxDistance = max;
+	basePos = ofVec3f(700,0,0);
+	targetPos = ofVec3f(700,0,0);
+}
+
+void cameraControl::update(double rate)
+{
+	if(rate<0.5 && !changeTarget)
+	{
+		basePos = targetPos;
+		double theta1 = ofRandom(-M_PI*0.25,M_PI*0.25);
+		double theta2= ofRandom(0,M_PI*0.5);
+		double distance= ofRandom(minDistance,maxDistance);
+		targetPos = ofVec3f(distance*sin(theta1),distance*cos(theta1)*cos(theta2),distance*cos(theta1)*cos(theta2));
+		changeTarget = true;
+	}
+	else if(rate>0.5)
+	{
+		changeTarget = false;
+	}
+	double sigmoidRate = 1/(1+exp(-40*(rate-0.5)));//球とモデルをシグモイドで切り替え
+	ofVec3f pos = rate*targetPos+(1-sigmoidRate)*basePos;
+
+	this->setPosition(pos);
+	this->lookAt(ofVec3f(0,0,0), ofVec3f(0,1,0));
+}
+
+
 //--------------------------------------------------------------
 ofApp::ofApp(int argc, char *argv[])
 {
@@ -42,8 +75,9 @@ ofApp::ofApp(int argc, char *argv[])
 
 //--------------------------------------------------------------
 void ofApp::setup(){
+	ofEnableDepthTest();
 	ofHideCursor();
-    ofSetBackgroundColor(0);
+    ofSetBackgroundColor(250);
 	count = 0;
 
 	mesh.setMode(OF_PRIMITIVE_POINTS);
@@ -83,21 +117,23 @@ void ofApp::setup(){
 		p.setModelPos(ofVec3f((filteredCloud->points[i].x-centroidVec3f.x)*enlargeLate,-(filteredCloud->points[i].y-centroidVec3f.y)*enlargeLate,-(filteredCloud->points[i].z-centroidVec3f.z)*enlargeLate));
 		
 		//球上の点
-		double theta1=ofRandom(0,M_PI*2);
+		double theta1=ofRandom(0,2*M_PI);
 		double theta2=ofRandom(0,M_PI);
 		double R=enlargeLate/2;
 		
-		p.setSpherePos(ofVec3f(R*sin(theta1)*sin(theta2),R*sin(theta1)*cos(theta2),R*cos(theta1)));
+		p.setSpherePos(ofVec3f(R*sin(theta1),R*cos(theta1)*cos(theta2),R*cos(theta1)*sin(theta2)));
 		p.setCol(ofColor(filteredCloud->points[i].r,filteredCloud->points[i].g,filteredCloud->points[i].b));
 		particles.push_back(p);
 	}
+
+	cam.setDistanceRange(minDistance,maxDistance);
 	cout<<"done"<<endl;
 }
 
 //--------------------------------------------------------------
 void ofApp::update(){
 	double timeRate = (double)((int)ofGetElapsedTimeMillis()%(int)frequency)/frequency;
-	
+	double cameraTimeRate = (double)((int)ofGetElapsedTimeMillis()%(int)angleChangeFrequency)/angleChangeFrequency;
 	double rate = 1/(1+exp(-cSigmoid*(std::abs(timeRate-0.5)-0.25)));//球とモデルをシグモイドで切り替え
 	mesh.clear();
 
@@ -109,11 +145,14 @@ void ofApp::update(){
 		mesh.addVertex(pos+noiseLevel*rate*noise);
 		mesh.addColor(particles[i].getCol());
 	}
+
+	cam.update(cameraTimeRate );
 }
 //--------------------------------------------------------------
 void ofApp::draw(){
 	
 	cam.begin();
+	glPointSize(2);
 	mesh.draw();
 	cam.end();
 }
