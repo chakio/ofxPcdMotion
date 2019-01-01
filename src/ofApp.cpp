@@ -17,10 +17,16 @@ void particle::setSpherePos(ofVec3f position)
 {
 	spherePos = position;
 }
+void particle::setSphereTheta(double theta1,double theta2)
+{
+	theta.x = theta1;
+	theta.y = theta2;
+}
 void particle::setCol(ofColor color)
 {
 	col = color;
 }
+
 ofVec3f particle::getPos(double rate)
 {
 	pos = rate*spherePos+(1-rate)*modelPos;
@@ -33,6 +39,10 @@ ofVec3f particle::getVel()
 ofColor	particle::getCol()
 {
 	return col;
+}
+ofVec2f particle::getTheta()
+{
+	return theta;
 }
 
 //--------------------------------------------------------------
@@ -50,7 +60,7 @@ void cameraControl::update(double rate)
 	{
 		basePos = targetPos;
 		double theta1 = ofRandom(-M_PI*0.25,M_PI*0.25);
-		double theta2= ofRandom(0,M_PI*0.5);
+		double theta2= ofRandom(0.0,M_PI*0.5);
 		double distance= ofRandom(minDistance,maxDistance);
 		targetPos = ofVec3f(distance*sin(theta1),distance*cos(theta1)*cos(theta2),distance*cos(theta1)*cos(theta2));
 		changeTarget = true;
@@ -114,14 +124,15 @@ void ofApp::setup(){
 	{
 		particle p;
 		//モデル上の点
-		p.setModelPos(ofVec3f((filteredCloud->points[i].x-centroidVec3f.x)*enlargeLate,-(filteredCloud->points[i].y-centroidVec3f.y)*enlargeLate,-(filteredCloud->points[i].z-centroidVec3f.z)*enlargeLate));
+		p.setModelPos(ofVec3f((filteredCloud->points[i].x-centroidVec3f.x)*enlargeRate,-(filteredCloud->points[i].y-centroidVec3f.y)*enlargeRate,-(filteredCloud->points[i].z-centroidVec3f.z)*enlargeRate));
 		
 		//球上の点
-		double theta1=ofRandom(0,2*M_PI);
-		double theta2=ofRandom(0,M_PI);
-		double R=enlargeLate/2;
+		double theta1=ofRandom(0.0,2*M_PI);
+		double theta2=ofRandom(0.0,M_PI);
+		double R=enlargeRate/3.0;
 		
 		p.setSpherePos(ofVec3f(R*sin(theta1),R*cos(theta1)*cos(theta2),R*cos(theta1)*sin(theta2)));
+		p.setSphereTheta(theta1,theta2);
 		p.setCol(ofColor(filteredCloud->points[i].r,filteredCloud->points[i].g,filteredCloud->points[i].b));
 		particles.push_back(p);
 	}
@@ -139,10 +150,11 @@ void ofApp::update(){
 
 	for(int i=0; i<particles.size(); i++)
 	{
-		ofVec3f noise = ofVec3f(ofNoise(i,0,ofGetElapsedTimef()),ofNoise(i,1,ofGetElapsedTimef()),ofNoise(i,2,ofGetElapsedTimef()));
+		ofVec3f positionalNoise = ofVec3f(ofNoise(i,0,ofGetElapsedTimef()),ofNoise(i,1,ofGetElapsedTimef()),ofNoise(i,2,ofGetElapsedTimef()));
 		ofVec3f pos = particles[i].getPos(rate);
+		ofVec3f sphericalNoise = pos.normalized()*ofNoise(sin(particles[i].getTheta().x),cos(particles[i].getTheta().x)*cos(particles[i].getTheta().y),cos(particles[i].getTheta().x)*sin(particles[i].getTheta().y),ofGetElapsedTimef());
 
-		mesh.addVertex(pos+noiseLevel*rate*noise);
+		mesh.addVertex(pos+noiseLevel*rate*(positionalNoise*0.3+sphericalNoise));
 		mesh.addColor(particles[i].getCol());
 	}
 

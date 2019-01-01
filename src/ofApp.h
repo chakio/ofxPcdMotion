@@ -36,6 +36,7 @@ private:
 
 	ofVec3f spherePos;
 	ofVec3f modelPos;
+	ofVec2f theta;
 
 public:
 	particle();
@@ -43,10 +44,12 @@ public:
 	void setCol(ofColor color);
 
 	void setSpherePos(ofVec3f position);
+	void setSphereTheta(double theta1,double theta2);
 	void setModelPos(ofVec3f position);
 	ofVec3f getPos(double rate);
 	ofVec3f getVel();
 	ofColor getCol();
+	ofVec2f getTheta();
 };
 
 class cameraControl : public ofEasyCam
@@ -90,11 +93,11 @@ class ofApp : public ofBaseApp{
 		int count = 0;
 		int step=0;
 
-		double enlargeLate = 500;
+		double enlargeRate = 500;
 		ofMesh mesh;
 
 		double frequency = 4000;
-		double cSigmoid = 60;
+		double cSigmoid = 40;
 		double noiseLevel = 100;
 
 		cameraControl cam;
