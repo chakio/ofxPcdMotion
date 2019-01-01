@@ -4,7 +4,7 @@
 Inspired by Everything in Its Right Place.
 
 ## Description
-Everything in Its Right Place / Radiohead
+Everything in Its Right Place / Radiohead  
 この曲は既成概念から開放され、めちゃくちゃな音の要素を再構築した末に、ピタリと一つの形をなした曲だそうです。  
 「すべてのものは、あるべき場所にある」  
 
