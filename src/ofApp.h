@@ -47,6 +47,7 @@ public:
 	void setSphereTheta(double theta1,double theta2);
 	void setModelPos(ofVec3f position);
 	ofVec3f getPos(double rate);
+	ofVec3f getModelPos();
 	ofVec3f getVel();
 	ofColor getCol();
 	ofVec2f getTheta();
@@ -96,12 +97,15 @@ class ofApp : public ofBaseApp{
 		double enlargeRate = 500;
 		ofMesh mesh;
 
-		double frequency = 4000;
-		double cSigmoid = 40;
+		double modelMaxHeight;
+		double modelMinHeight;
+
+		double frequency = 9000;
+		double cSigmoid = 50;
 		double noiseLevel = 100;
 
 		cameraControl cam;
-		double minDistance = 500;
+		double minDistance = 600;
 		double maxDistance = 700;
-		double angleChangeFrequency = 3000;
+		double angleChangeFrequency = 6000;
 };

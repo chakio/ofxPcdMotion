@@ -32,6 +32,10 @@ ofVec3f particle::getPos(double rate)
 	pos = rate*spherePos+(1-rate)*modelPos;
 	return pos;
 }
+ofVec3f particle::getModelPos()
+{
+	return modelPos;
+}
 ofVec3f particle::getVel()
 {
 	return vel;
@@ -120,23 +124,34 @@ void ofApp::setup(){
 	ofVec3f centroidVec3f =  ofVec3f(c1.x,c1.y,c1.z);
 	cout<<centroidVec3f<<endl;
 	//重心が原点になるように並進移動してから読み込み
+	modelMinHeight=100000000;
+	modelMaxHeight=-10000000;
 	for(int i=0;i<filteredCloud->points.size();i++)
 	{
 		particle p;
 		//モデル上の点
 		p.setModelPos(ofVec3f((filteredCloud->points[i].x-centroidVec3f.x)*enlargeRate,-(filteredCloud->points[i].y-centroidVec3f.y)*enlargeRate,-(filteredCloud->points[i].z-centroidVec3f.z)*enlargeRate));
-		
+		if(-(filteredCloud->points[i].y-centroidVec3f.y)*enlargeRate<modelMinHeight)
+		{
+			modelMinHeight = -(filteredCloud->points[i].y-centroidVec3f.y)*enlargeRate;
+		}
+		else if(-(filteredCloud->points[i].y-centroidVec3f.y)*enlargeRate>modelMaxHeight)
+		{
+			modelMaxHeight = -(filteredCloud->points[i].y-centroidVec3f.y)*enlargeRate;
+		}
+
 		//球上の点
 		double theta1=ofRandom(0.0,2*M_PI);
 		double theta2=ofRandom(0.0,M_PI);
-		double R=enlargeRate/3.0;
+		double R=enlargeRate/2.0;
 		
 		p.setSpherePos(ofVec3f(R*sin(theta1),R*cos(theta1)*cos(theta2),R*cos(theta1)*sin(theta2)));
 		p.setSphereTheta(theta1,theta2);
 		p.setCol(ofColor(filteredCloud->points[i].r,filteredCloud->points[i].g,filteredCloud->points[i].b));
 		particles.push_back(p);
 	}
-
+	cout<<modelMinHeight<<endl;
+	cout<<modelMaxHeight<<endl;
 	cam.setDistanceRange(minDistance,maxDistance);
 	cout<<"done"<<endl;
 }
@@ -145,11 +160,23 @@ void ofApp::setup(){
 void ofApp::update(){
 	double timeRate = (double)((int)ofGetElapsedTimeMillis()%(int)frequency)/frequency;
 	double cameraTimeRate = (double)((int)ofGetElapsedTimeMillis()%(int)angleChangeFrequency)/angleChangeFrequency;
-	double rate = 1/(1+exp(-cSigmoid*(std::abs(timeRate-0.5)-0.25)));//球とモデルをシグモイドで切り替え
+	
 	mesh.clear();
 
 	for(int i=0; i<particles.size(); i++)
 	{
+		double modelTimeRate = (timeRate -  ((particles[i].getModelPos().y-modelMinHeight)/(modelMaxHeight-modelMinHeight)-0.5)*0.2);
+		if (modelTimeRate<0)
+		{
+			modelTimeRate +=1;
+		}
+		else if(modelTimeRate>1)
+		{
+			modelTimeRate -= 1;
+		}
+		//Bcout<<modelTimeRate<<endl;
+		double rate = 1/(1+exp(-cSigmoid*(std::abs(modelTimeRate-0.5)-0.25)));//球とモデルをシグモイドで切り替え
+
 		ofVec3f positionalNoise = ofVec3f(ofNoise(i,0,ofGetElapsedTimef()),ofNoise(i,1,ofGetElapsedTimef()),ofNoise(i,2,ofGetElapsedTimef()));
 		ofVec3f pos = particles[i].getPos(rate);
 		ofVec3f sphericalNoise = pos.normalized()*ofNoise(sin(particles[i].getTheta().x),cos(particles[i].getTheta().x)*cos(particles[i].getTheta().y),cos(particles[i].getTheta().x)*sin(particles[i].getTheta().y),ofGetElapsedTimef());
