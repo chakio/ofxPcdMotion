@@ -27,6 +27,16 @@
 
 using namespace std;
 
+//極座標系の位置
+class ofPolePoint
+{
+public:
+	ofPolePoint(double Radius= 0, double Theta1 = 0, double Theta2 = 0);
+	double radius;
+	double theta1;
+	double theta2;
+};
+
 class particle
 {
 private:
@@ -34,23 +44,24 @@ private:
 	ofVec3f vel;
 	ofColor col;
 
-	ofVec3f spherePos;
-	ofVec3f modelPos;
-	ofVec2f theta;
+	ofVec3f 	spherePos;//デカルト座標系の球上の点
+	ofPolePoint spherePolePos;//極座標系の球上の点
+	ofVec3f 	modelPos;//デカルト座標系のPCD上の点
 
 public:
 	particle();
-	void setPos(ofVec3f position);
-	void setCol(ofColor color);
+	void setPos(ofVec3f position);//パーティクルの位置
+	void setCol(ofColor color);//色の設定
 
-	void setSpherePos(ofVec3f position);
-	void setSphereTheta(double theta1,double theta2);
-	void setModelPos(ofVec3f position);
+	void setSpherePos(ofPolePoint position);//球上のパーティクルの位置
+	void setModelPos(ofVec3f position);//PCD上のパーティクルの位置
+
 	ofVec3f getPos(double rate);
 	ofVec3f getModelPos();
+	ofPolePoint getSpherePos();
+	
 	ofVec3f getVel();
 	ofColor getCol();
-	ofVec2f getTheta();
 };
 
 class cameraControl : public ofEasyCam
@@ -66,8 +77,8 @@ public:
 	void update(double rate);
 };
 
-class ofApp : public ofBaseApp{
-
+class ofApp : public ofBaseApp
+{
 	public:
 		ofApp(int argc, char *argv[]);
 		void setup();
@@ -103,6 +114,7 @@ class ofApp : public ofBaseApp{
 		double frequency = 9000;
 		double cSigmoid = 50;
 		double noiseLevel = 100;
+		double noiseRate = 0.7;//positional noise per spherical noise 
 
 		cameraControl cam;
 		double minDistance = 600;

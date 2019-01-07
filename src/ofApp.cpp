@@ -1,5 +1,13 @@
 #include "ofApp.h"
 
+
+ofPolePoint::ofPolePoint(double Radius,double Theta1,double Theta2)
+{
+	radius = Radius;
+	theta1 = Theta1;
+	theta2 = Theta2;
+}
+//--------------------------------------------------------------
 particle::particle()
 {
 	col 	= ofColor(255,255,255);
@@ -13,14 +21,10 @@ void particle::setModelPos(ofVec3f position)
 {
 	modelPos = position;
 }
-void particle::setSpherePos(ofVec3f position)
+void particle::setSpherePos(ofPolePoint position)
 {
-	spherePos = position;
-}
-void particle::setSphereTheta(double theta1,double theta2)
-{
-	theta.x = theta1;
-	theta.y = theta2;
+	spherePolePos = position;
+	spherePos = ofVec3f(spherePolePos.radius*sin(spherePolePos.theta1),spherePolePos.radius*cos(spherePolePos.theta1)*cos(spherePolePos.theta2),spherePolePos.radius*cos(spherePolePos.theta1)*sin(spherePolePos.theta2));
 }
 void particle::setCol(ofColor color)
 {
@@ -36,6 +40,10 @@ ofVec3f particle::getModelPos()
 {
 	return modelPos;
 }
+ofPolePoint particle::getSpherePos()
+{
+	return spherePolePos;
+}
 ofVec3f particle::getVel()
 {
 	return vel;
@@ -43,10 +51,6 @@ ofVec3f particle::getVel()
 ofColor	particle::getCol()
 {
 	return col;
-}
-ofVec2f particle::getTheta()
-{
-	return theta;
 }
 
 //--------------------------------------------------------------
@@ -108,7 +112,7 @@ void ofApp::setup(){
 	pcl::PassThrough<pcl::PointXYZRGB> passThrough;
 	passThrough.setInputCloud (inputCloud);
 	passThrough.setFilterFieldName ("z");
-	passThrough.setFilterLimits (0.3, 2.0);
+	passThrough.setFilterLimits (0.3, 2.0);//PCDの読み込む範囲の指定
 	//pass.setFilterLimitsNegative (true);
 	passThrough.filter (*filteredCloud);
 
@@ -121,16 +125,30 @@ void ofApp::setup(){
 	}
 	pcl::PointXYZ c1;
 	centroid.get(c1);
-	ofVec3f centroidVec3f =  ofVec3f(c1.x,c1.y,c1.z);
-	cout<<centroidVec3f<<endl;
-	//重心が原点になるように並進移動してから読み込み
+	ofVec3f centroidVec3f(c1.x,c1.y,c1.z);
+
+	//各点群をparticleとして読み込み
 	modelMinHeight=100000000;
 	modelMaxHeight=-10000000;
 	for(int i=0;i<filteredCloud->points.size();i++)
 	{
 		particle p;
-		//モデル上の点
+		//モデル上の点の指定
 		p.setModelPos(ofVec3f((filteredCloud->points[i].x-centroidVec3f.x)*enlargeRate,-(filteredCloud->points[i].y-centroidVec3f.y)*enlargeRate,-(filteredCloud->points[i].z-centroidVec3f.z)*enlargeRate));
+		
+		//ランダムに球上の点の指定
+		double theta1=ofRandom(0.0,2*M_PI);
+		double theta2=ofRandom(0.0,M_PI);
+		double R=enlargeRate/2.0;
+		
+		p.setSpherePos(ofPolePoint(R,theta1,theta2));
+		p.setCol(ofColor(filteredCloud->points[i].r,filteredCloud->points[i].g,filteredCloud->points[i].b));
+		particles.push_back(p);
+	}
+
+	//読み込んだモデルの区中で最大の高さと最小の高さを取得
+	for(int i=0;i<filteredCloud->points.size();i++)
+	{
 		if(-(filteredCloud->points[i].y-centroidVec3f.y)*enlargeRate<modelMinHeight)
 		{
 			modelMinHeight = -(filteredCloud->points[i].y-centroidVec3f.y)*enlargeRate;
@@ -139,16 +157,6 @@ void ofApp::setup(){
 		{
 			modelMaxHeight = -(filteredCloud->points[i].y-centroidVec3f.y)*enlargeRate;
 		}
-
-		//球上の点
-		double theta1=ofRandom(0.0,2*M_PI);
-		double theta2=ofRandom(0.0,M_PI);
-		double R=enlargeRate/2.0;
-		
-		p.setSpherePos(ofVec3f(R*sin(theta1),R*cos(theta1)*cos(theta2),R*cos(theta1)*sin(theta2)));
-		p.setSphereTheta(theta1,theta2);
-		p.setCol(ofColor(filteredCloud->points[i].r,filteredCloud->points[i].g,filteredCloud->points[i].b));
-		particles.push_back(p);
 	}
 	cout<<modelMinHeight<<endl;
 	cout<<modelMaxHeight<<endl;
@@ -163,9 +171,10 @@ void ofApp::update(){
 	
 	mesh.clear();
 
-	for(int i=0; i<particles.size(); i++)
+	for(int particleIndex=0; particleIndex<particles.size(); particleIndex++)
 	{
-		double modelTimeRate = (timeRate -  ((particles[i].getModelPos().y-modelMinHeight)/(modelMaxHeight-modelMinHeight)-0.5)*0.2);
+		//時間に基づくモデルの形状の切り替え
+		double modelTimeRate = (timeRate -  ((particles[particleIndex].getModelPos().y-modelMinHeight)/(modelMaxHeight-modelMinHeight)-0.5)*0.2);
 		if (modelTimeRate<0)
 		{
 			modelTimeRate +=1;
@@ -174,15 +183,23 @@ void ofApp::update(){
 		{
 			modelTimeRate -= 1;
 		}
-		//Bcout<<modelTimeRate<<endl;
-		double rate = 1/(1+exp(-cSigmoid*(std::abs(modelTimeRate-0.5)-0.25)));//球とモデルをシグモイドで切り替え
 
-		ofVec3f positionalNoise = ofVec3f(ofNoise(i,0,ofGetElapsedTimef()),ofNoise(i,1,ofGetElapsedTimef()),ofNoise(i,2,ofGetElapsedTimef()));
-		ofVec3f pos = particles[i].getPos(rate);
-		ofVec3f sphericalNoise = pos.normalized()*ofNoise(sin(particles[i].getTheta().x),cos(particles[i].getTheta().x)*cos(particles[i].getTheta().y),cos(particles[i].getTheta().x)*sin(particles[i].getTheta().y),ofGetElapsedTimef());
+		//球とモデルをシグモイドで切り替え
+		double rate = 1/(1+exp(-cSigmoid*(std::abs(modelTimeRate-0.5)-0.25)));
 
-		mesh.addVertex(pos+noiseLevel*rate*(positionalNoise*0.3+sphericalNoise));
-		mesh.addColor(particles[i].getCol());
+		//	rateに応じた点群の位置の取得
+		ofVec3f pos = particles[particleIndex].getPos(rate);
+
+		//点群の位置に対してノイズをのせる
+		//点群に割り当てられたindexに基づくノイズ
+		ofVec3f positionalNoise = ofVec3f(ofNoise(particleIndex,0,ofGetElapsedTimef()),ofNoise(particleIndex,1,ofGetElapsedTimef()),ofNoise(particleIndex,2,ofGetElapsedTimef()));
+		//点群の球面上の点の位置に基づくノイズ
+		ofPolePoint polePos = particles[particleIndex].getSpherePos(); 
+		ofVec3f sphericalNoise = pos.normalized()*ofNoise(sin(polePos.theta1),cos(polePos.theta1)*cos(polePos.theta2),cos(polePos.theta1)*sin(polePos.theta2),ofGetElapsedTimef());
+
+		//meshに追加
+		mesh.addVertex(pos+noiseLevel*rate*(positionalNoise*(1-noiseRate) + sphericalNoise*noiseRate));
+		mesh.addColor(particles[particleIndex].getCol());
 	}
 
 	cam.update(cameraTimeRate );
